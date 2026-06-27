@@ -78,5 +78,12 @@ An insanely fast Python backend powered by FastAPI.
 
 ---
 
+## 👑 Royalty & Credits
+**Architected and engineered by Shubham Masali.**
+
+This system was designed from the ground up to solve the immense data fragmentation problem in Indian engineering admissions. All rights reserved.
+
+---
+
 ## 🛡️ License
-Built for precision. Built for students. 
+Built for precision. Built for students.  
