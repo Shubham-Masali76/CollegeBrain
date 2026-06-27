@@ -245,16 +245,17 @@ def agentic_web_scraper_thread(task):
 # PIPELINE 0: THE DISCOVERY ENGINE (SEEDS DB AUTOMATICALLY)
 # ---------------------------------------------------------
 def discover_all_colleges():
-    regions = ["Mumbai", "Pune", "Nagpur", "Nashik", "Aurangabad", "Amravati"]
+    # Expanded to major Indian States
+    regions = ["Delhi", "Karnataka", "Tamil Nadu", "Maharashtra", "Telangana", "Uttar Pradesh", "Gujarat", "West Bengal"]
     all_colleges = []
     
     for region in regions:
         print(f"\n[Pipeline 0] AI Scout searching for B.E. and M.E. Engineering Colleges in {region}...")
-        context = search_web(f"List of BE BTech and ME MTech engineering colleges in {region} Maharashtra with DTE Institute Codes")
+        context = search_web(f"List of top BE BTech and ME MTech engineering colleges in {region} India with official Institute Codes")
         
         prompt = f"""
-        Generate a list of engineering colleges offering B.E./B.Tech and M.E./M.Tech degrees in {region}, Maharashtra.
-        You MUST include their official DTE Maharashtra Institute Code (e.g. EN6006).
+        Generate a list of top engineering colleges offering B.E./B.Tech and M.E./M.Tech degrees in {region}, India.
+        You MUST include their official admission code or AICTE Institute ID (e.g., JoSAA code, COMEDK code, or State Code).
         
         Context: {context}
         
@@ -262,9 +263,9 @@ def discover_all_colleges():
         {{
           "colleges": [
             {{
-              "institute_code": "EN6006",
-              "name": "College of Engineering Pune",
-              "city": "Pune"
+              "institute_code": "KA-102",
+              "name": "RV College of Engineering",
+              "city": "Bengaluru"
             }}
           ]
         }}
@@ -296,7 +297,7 @@ def discover_all_colleges():
             cursor.execute('''
                 INSERT INTO colleges (institute_code, name, city, state, country, university)
                 VALUES (?, ?, ?, ?, ?, ?)
-            ''', (c['institute_code'], c['name'], c['city'], 'Maharashtra', 'India', 'State University'))
+            ''', (c['institute_code'], c['name'], c['city'], region, 'India', 'State / Autonomous University'))
             inserted += 1
             
     conn.commit()
