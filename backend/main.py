@@ -53,13 +53,51 @@ def recommend_colleges(profile: StudentProfile):
         JOIN cutoffs cu ON p.id = cu.program_id
         JOIN fees f ON p.college_id = f.college_id
         WHERE cu.round_number = 1 
-          AND cu.category = ?
+          AND (cu.category = ? OR cu.category LIKE '%' || ? || '%')
+          AND (cu.exam_type LIKE '%' || ? || '%' OR ? = '')
           AND (c.city = ? OR ? = '')
           AND (p.branch_name LIKE '%' || ? || '%' OR ? = '')
     """
     
+    # 1. Smart Category Mapping
+    raw_cat = profile.category.upper().strip()
+    if raw_cat in ["OPEN", "GENERAL", "UR", "GEN"]:
+        cat = "GOPEN"
+    else:
+        cat = raw_cat
+        
+    # 2. Smart Exam Mapping
+    raw_exam = profile.exam_type.upper().strip() if profile.exam_type else ""
+    if "DIPLOMA" in raw_exam or "DSE" in raw_exam:
+        exam = "DSE"
+    elif "JEE" in raw_exam or "MAINS" in raw_exam:
+        exam = "JEE"
+    elif "MHT" in raw_exam or "CET" in raw_exam:
+        exam = "MHT-CET"
+    elif "GATE" in raw_exam or "M.E" in raw_exam or "M.TECH" in raw_exam:
+        exam = "GATE"
+    else:
+        exam = raw_exam
+        
+    # 3. Smart Branch Mapping
+    raw_branch = profile.preferred_branch.upper().strip() if profile.preferred_branch else ""
+    if "CS" in raw_branch or "COMPUTER" in raw_branch:
+        branch = "Computer"
+    elif "IT" in raw_branch or "INFORMATION" in raw_branch:
+        branch = "Information Technology"
+    elif "AI" in raw_branch or "ARTIFICIAL" in raw_branch:
+        branch = "Artificial Intelligence"
+    elif "ENTC" in raw_branch or "ELECTRONIC" in raw_branch:
+        branch = "Electronic"
+    elif "MECH" in raw_branch:
+        branch = "Mechanical"
+    elif "CIVIL" in raw_branch:
+        branch = "Civil"
+    else:
+        branch = profile.preferred_branch if profile.preferred_branch else ""
+    
     # Execute query
-    params = (profile.category.upper(), profile.preferred_city, profile.preferred_city, profile.preferred_branch, profile.preferred_branch)
+    params = (cat, cat, exam, exam, profile.preferred_city, profile.preferred_city, branch, branch)
     cursor.execute(query, params)
     rows = cursor.fetchall()
     

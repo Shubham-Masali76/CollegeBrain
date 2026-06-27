@@ -242,6 +242,69 @@ def agentic_web_scraper_thread(task):
     return True
 
 # ---------------------------------------------------------
+# PIPELINE 0: THE DISCOVERY ENGINE (SEEDS DB AUTOMATICALLY)
+# ---------------------------------------------------------
+def discover_all_colleges():
+    regions = ["Mumbai", "Pune", "Nagpur", "Nashik", "Aurangabad", "Amravati"]
+    all_colleges = []
+    
+    for region in regions:
+        print(f"\n[Pipeline 0] AI Scout searching for Engineering Colleges in {region}...")
+        context = search_web(f"List of engineering colleges in {region} Maharashtra with DTE Institute Codes")
+        
+        prompt = f"""
+        Generate a list of engineering colleges in {region}, Maharashtra.
+        You MUST include their official DTE Maharashtra Institute Code (e.g. EN6006).
+        
+        Context: {context}
+        
+        Return ONLY valid JSON matching this exact schema:
+        {{
+          "colleges": [
+            {{
+              "institute_code": "EN6006",
+              "name": "College of Engineering Pune",
+              "city": "Pune"
+            }}
+          ]
+        }}
+        """
+        
+        try:
+            response = groq_client.chat.completions.create(
+                model="llama-3.3-70b-versatile",
+                messages=[{"role": "user", "content": prompt}],
+                response_format={"type": "json_object"}
+            )
+            data = json.loads(response.choices[0].message.content)
+            colleges = data.get("colleges", [])
+            print(f" -> Found {len(colleges)} colleges in {region}!")
+            all_colleges.extend(colleges)
+        except Exception as e:
+            print(f" -> Failed to extract for {region}: {e}")
+            
+        time.sleep(2) # rate limit
+        
+    print(f"\n[Pipeline 0] Seeding {len(all_colleges)} discovered colleges into SQLite...")
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    inserted = 0
+    for c in all_colleges:
+        cursor.execute("SELECT id FROM colleges WHERE institute_code = ?", (c['institute_code'],))
+        if not cursor.fetchone():
+            cursor.execute('''
+                INSERT INTO colleges (institute_code, name, city, state, country, university)
+                VALUES (?, ?, ?, ?, ?, ?)
+            ''', (c['institute_code'], c['name'], c['city'], 'Maharashtra', 'India', 'State University'))
+            inserted += 1
+            
+    conn.commit()
+    conn.close()
+    print(f"[Pipeline 0] SUCCESS: Seeded {inserted} new colleges automatically!\n")
+
+
+# ---------------------------------------------------------
 # MASTER CRON JOB EXECUTOR
 # ---------------------------------------------------------
 def run_nightly_cron_job():
@@ -249,6 +312,10 @@ def run_nightly_cron_job():
     print("[2:00 AM CRON JOB] Starting Master Ingestion Engine...")
     print("==========================================================")
 
+    # 1. Run Pipeline 0 (Discovery) to find any new colleges
+    discover_all_colleges()
+
+    # 2. Load all colleges for scraping
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute("SELECT institute_code FROM colleges")
