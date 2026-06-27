@@ -249,11 +249,11 @@ def discover_all_colleges():
     all_colleges = []
     
     for region in regions:
-        print(f"\n[Pipeline 0] AI Scout searching for Engineering Colleges in {region}...")
-        context = search_web(f"List of engineering colleges in {region} Maharashtra with DTE Institute Codes")
+        print(f"\n[Pipeline 0] AI Scout searching for B.E. and M.E. Engineering Colleges in {region}...")
+        context = search_web(f"List of BE BTech and ME MTech engineering colleges in {region} Maharashtra with DTE Institute Codes")
         
         prompt = f"""
-        Generate a list of engineering colleges in {region}, Maharashtra.
+        Generate a list of engineering colleges offering B.E./B.Tech and M.E./M.Tech degrees in {region}, Maharashtra.
         You MUST include their official DTE Maharashtra Institute Code (e.g. EN6006).
         
         Context: {context}
