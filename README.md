@@ -56,6 +56,8 @@ An insanely fast Python backend powered by FastAPI.
 
 3. **Initialize the Database & Scrape Colleges**
    This script will automatically create the database schema, discover colleges across India, and scrape their cutoffs!
+   
+   *(Note: For local testing, you run this command manually once. When deployed to a live cloud server, this script runs completely autonomously as a 2:00 AM nightly cron job.)*
    ```bash
    cd backend
    uv run python live_scraper.py
