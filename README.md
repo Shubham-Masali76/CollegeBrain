@@ -28,8 +28,7 @@ An insanely fast Python backend powered by FastAPI.
 - `database.py`: The relational SQLite schema.
 
 ### 3. Ingestion Engine (AI Scraping)
-- `ingestion_engine.py`: Seed data injector for historical benchmarks.
-- `live_scraper.py`: The live web crawler using `ddgs` and `groq` to parse messy HTML into strict JSON.
+- `live_scraper.py`: The unified master crawler. It automatically discovers colleges across India, extracts their cutoffs, parses their fees, and calculates ROI metrics using LLMs.
 
 ---
 
@@ -55,11 +54,12 @@ An insanely fast Python backend powered by FastAPI.
    GEMINI_API_KEY=your_gemini_key
    ```
 
-3. **Initialize the Database**
+3. **Initialize the Database & Scrape Colleges**
+   This script will automatically discover colleges across India and scrape their cutoffs!
    ```bash
    cd backend
    uv run python database.py
-   uv run python ingestion_engine.py
+   uv run python live_scraper.py
    ```
 
 4. **Start the API Server**
