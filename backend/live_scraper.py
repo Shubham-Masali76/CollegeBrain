@@ -9,6 +9,7 @@ from dotenv import load_dotenv
 from ddgs import DDGS
 from groq import Groq
 from google import genai
+from database import init_db
 
 load_dotenv()
 
@@ -312,6 +313,9 @@ def run_nightly_cron_job():
     print("==========================================================")
     print("[2:00 AM CRON JOB] Starting Master Ingestion Engine...")
     print("==========================================================")
+
+    # 0. Ensure Database exists and schema is loaded
+    init_db()
 
     # 1. Run Pipeline 0 (Discovery) to find any new colleges
     discover_all_colleges()
