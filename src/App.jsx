@@ -13,6 +13,7 @@ export default function App() {
   const [isBudgetOpen, setIsBudgetOpen] = useState(false)
   const [colleges, setColleges] = useState([])
   const [loading, setLoading] = useState(false)
+  const [hasSearched, setHasSearched] = useState(false)
 
   const handleGenerate = async () => {
     setLoading(true)
@@ -26,6 +27,7 @@ export default function App() {
         budget: budget ? parseInt(budget) : null
       })
       setColleges(res.data.recommendations)
+      setHasSearched(true)
     } catch (e) {
       console.error(e)
     } finally {
@@ -148,6 +150,13 @@ export default function App() {
         </div>
 
         {/* Drag and Drop List */}
+        {hasSearched && colleges.length === 0 && (
+          <div className="bg-gray-900 border border-gray-800 p-8 rounded-2xl text-center">
+            <h2 className="text-xl font-bold text-gray-300">No Colleges Found</h2>
+            <p className="text-gray-500 mt-2">We couldn't find any colleges matching your criteria. Try adjusting your budget, percentile, or exam type.</p>
+          </div>
+        )}
+        
         {colleges.length > 0 && (
           <div className="space-y-4">
             <div className="flex justify-between items-center">
