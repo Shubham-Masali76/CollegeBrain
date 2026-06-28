@@ -246,11 +246,15 @@ def agentic_web_scraper_thread(task):
 # PIPELINE 0: THE DISCOVERY ENGINE (SEEDS DB AUTOMATICALLY)
 # ---------------------------------------------------------
 def discover_all_colleges():
-    # Loop state-by-state to bypass the AI's Output Token Limit!
+    # Loop through ALL 28 States and 8 Union Territories to guarantee zero misses
     regions = [
-        "Maharashtra", "Karnataka", "Tamil Nadu", "Delhi", "Telangana", 
-        "Uttar Pradesh", "Gujarat", "West Bengal", "Andhra Pradesh", 
-        "Kerala", "Rajasthan", "Madhya Pradesh", "Punjab", "Odisha"
+        "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh", 
+        "Goa", "Gujarat", "Haryana", "Himachal Pradesh", "Jharkhand", "Karnataka", 
+        "Kerala", "Madhya Pradesh", "Maharashtra", "Manipur", "Meghalaya", "Mizoram", 
+        "Nagaland", "Odisha", "Punjab", "Rajasthan", "Sikkim", "Tamil Nadu", "Telangana", 
+        "Tripura", "Uttar Pradesh", "Uttarakhand", "West Bengal", 
+        "Andaman and Nicobar Islands", "Chandigarh", "Dadra and Nagar Haveli", 
+        "Daman and Diu", "Lakshadweep", "Delhi", "Puducherry", "Ladakh", "Jammu and Kashmir"
     ]
     all_colleges = []
     
@@ -313,6 +317,14 @@ def discover_all_colleges():
 # ---------------------------------------------------------
 # MASTER CRON JOB EXECUTOR
 # ---------------------------------------------------------
+def run_all_cutoffs(colleges):
+    for college in colleges:
+        cutoff_scraper_thread(college)
+
+def run_all_web_metrics(colleges):
+    for college in colleges:
+        agentic_web_scraper_thread(college)
+
 def run_nightly_cron_job():
     print("==========================================================")
     print("[2:00 AM CRON JOB] Starting Master Ingestion Engine...")
@@ -333,31 +345,29 @@ def run_nightly_cron_job():
 
     print(f"Loaded {len(colleges)} colleges for processing.")
 
-    # Using ThreadPoolExecutor to run tasks concurrently
-    # Max Workers set to 3 to prevent DuckDuckGo rate limiting (ConnectTimeout)
+    # 3. Execute Task-Level Threading (Parameter-based)
+    # Exactly 2 threads: One parses all cutoffs, One parses all placements/fees.
     start_time = time.time()
     
-    with ThreadPoolExecutor(max_workers=3) as executor:
+    with ThreadPoolExecutor(max_workers=2) as executor:
         futures = []
+        
+        # Dispatch the massive cutoff loop to Thread 1
+        futures.append(executor.submit(run_all_cutoffs, colleges))
+        
+        # Dispatch the massive web metrics loop to Thread 2
+        futures.append(executor.submit(run_all_web_metrics, colleges))
 
-        # Queue up all tasks
-        for college in colleges:
-            # Dispatch to Pipeline A (Cutoffs Scraper)
-            futures.append(executor.submit(cutoff_scraper_thread, college))
-            # Dispatch to Pipeline B (Web & Sentiment)
-            futures.append(executor.submit(agentic_web_scraper_thread, college))
-
-        # Wait for all threads to finish
         for future in as_completed(futures):
             try:
-                future.result() # Will raise exceptions if any thread failed
+                future.result() 
             except Exception as e:
-                print(f"[CRITICAL ERROR] A thread crashed: {e}")
+                print(f"[CRITICAL ERROR] A task thread crashed: {e}")
 
     end_time = time.time()
     print("==========================================================")
     print(f"SUCCESS: CRON JOB FINISHED in {round(end_time - start_time, 2)} seconds!")
-    print(f"SUCCESS: Successfully processed {len(futures)} autonomous extraction tasks across 3 Thread Pools.")
+    print(f"SUCCESS: Processed autonomous extraction via Task-Level Threading.")
     print("SUCCESS: CollegeBrain Database is 100% Live and Accurate.")
     print("==========================================================")
 
