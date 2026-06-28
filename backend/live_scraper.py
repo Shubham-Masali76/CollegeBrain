@@ -245,6 +245,30 @@ def agentic_web_scraper_thread(task):
 # ---------------------------------------------------------
 # PIPELINE 0: THE DISCOVERY ENGINE (SEEDS DB AUTOMATICALLY)
 # ---------------------------------------------------------
+def discover_region(region):
+    print(f"\n[Pipeline 0] AI Scout searching for B.E. and M.E. Engineering Colleges across {region}...")
+    context = search_web(f"List of top BE BTech and ME MTech engineering colleges across {region} with official Institute Codes")
+    
+    prompt = f"""
+    Generate a comprehensive list of up to 30 top engineering colleges offering B.E./B.Tech and M.E./M.Tech degrees across {region}.
+    You MUST include their official admission code or AICTE Institute ID (e.g., JoSAA code, COMEDK code, or State Code).
+    
+    Context: {context}
+    
+    Format the response as a valid JSON array of objects.
+    Example:
+    [
+        {{"institute_code": "EN1234", "name": "College Name", "city": "City", "state": "{region}", "university": "State University"}}
+    ]
+    ONLY RETURN JSON. NO MARKDOWN OR BACKTICKS.
+    """
+    try:
+        response = get_llm_json(prompt, system_prompt="You are an expert Indian engineering admissions data extractor. Only output valid JSON.")
+        return response if isinstance(response, list) else []
+    except Exception as e:
+        print(f"[Pipeline 0 Error] Failed to extract colleges for {region}: {e}")
+        return []
+
 def discover_all_colleges():
     # Loop through ALL 28 States and 8 Union Territories to guarantee zero misses
     regions = [
@@ -258,42 +282,15 @@ def discover_all_colleges():
     ]
     all_colleges = []
     
-    for region in regions:
-        print(f"\n[Pipeline 0] AI Scout searching for B.E. and M.E. Engineering Colleges across {region}...")
-        context = search_web(f"List of top BE BTech and ME MTech engineering colleges across {region} with official Institute Codes")
-        
-        prompt = f"""
-        Generate a comprehensive list of up to 30 top engineering colleges offering B.E./B.Tech and M.E./M.Tech degrees across {region}.
-        You MUST include their official admission code or AICTE Institute ID (e.g., JoSAA code, COMEDK code, or State Code).
-        
-        Context: {context}
-        
-        Return ONLY valid JSON matching this exact schema:
-        {{
-          "colleges": [
-            {{
-              "institute_code": "KA-102",
-              "name": "RV College of Engineering",
-              "city": "Bengaluru"
-            }}
-          ]
-        }}
-        """
-        
-        try:
-            response = groq_client.chat.completions.create(
-                model="llama-3.3-70b-versatile",
-                messages=[{"role": "user", "content": prompt}],
-                response_format={"type": "json_object"}
-            )
-            data = json.loads(response.choices[0].message.content)
-            colleges = data.get("colleges", [])
-            print(f" -> Found {len(colleges)} colleges in {region}!")
-            all_colleges.extend(colleges)
-        except Exception as e:
-            print(f" -> Failed to extract for {region}: {e}")
-            
-        time.sleep(2) # rate limit
+    # Parallelize the discovery phase! Max workers=3 to avoid DDGS block.
+    with ThreadPoolExecutor(max_workers=3) as executor:
+        future_to_region = {executor.submit(discover_region, region): region for region in regions}
+        for future in as_completed(future_to_region):
+            region = future_to_region[future]
+            colleges = future.result()
+            if colleges:
+                all_colleges.extend(colleges)
+                print(f" -> Found {len(colleges)} colleges in {region}!")
         
     print(f"\n[Pipeline 0] Seeding {len(all_colleges)} discovered colleges into SQLite...")
     conn = get_db_connection()
@@ -303,10 +300,12 @@ def discover_all_colleges():
     for c in all_colleges:
         cursor.execute("SELECT id FROM colleges WHERE institute_code = ?", (c['institute_code'],))
         if not cursor.fetchone():
+            # In the new parallel structure, we pass c['state'] rather than the outer region loop var
+            state_val = c.get('state', 'Unknown')
             cursor.execute('''
                 INSERT INTO colleges (institute_code, name, city, state, country, university)
                 VALUES (?, ?, ?, ?, ?, ?)
-            ''', (c['institute_code'], c['name'], c['city'], region, 'India', 'State / Autonomous University'))
+            ''', (c['institute_code'], c['name'], c['city'], state_val, 'India', 'State / Autonomous University'))
             inserted += 1
             
     conn.commit()
