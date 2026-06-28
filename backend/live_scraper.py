@@ -282,8 +282,8 @@ def discover_all_colleges():
     ]
     all_colleges = []
     
-    # Parallelize the discovery phase! Max workers=3 to avoid DDGS block.
-    with ThreadPoolExecutor(max_workers=3) as executor:
+    # Parallelize the discovery phase! Max workers=6 (increased for speed)
+    with ThreadPoolExecutor(max_workers=6) as executor:
         future_to_region = {executor.submit(discover_region, region): region for region in regions}
         for future in as_completed(future_to_region):
             region = future_to_region[future]
