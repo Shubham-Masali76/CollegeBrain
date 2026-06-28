@@ -323,7 +323,7 @@ def run_nightly_cron_job():
     # 2. Load all colleges for scraping
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT institute_code FROM colleges")
+    cursor.execute("SELECT * FROM colleges")
     colleges = [dict(row) for row in cursor.fetchall()]
     conn.close()
 
