@@ -25,8 +25,8 @@ venv.bak/
 .env.production.local
 
 # Databases
-backend/collegebrain.db
-*.sqlite3
+# We specifically want to commit collegebrain.db so the senior gets it pre-populated!
+# *.sqlite3
 
 # Logs
 npm-debug.log*
