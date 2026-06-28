@@ -246,8 +246,12 @@ def agentic_web_scraper_thread(task):
 # PIPELINE 0: THE DISCOVERY ENGINE (SEEDS DB AUTOMATICALLY)
 # ---------------------------------------------------------
 def discover_all_colleges():
-    # Search all over India in one sweep
-    regions = ["India"]
+    # Loop state-by-state to bypass the AI's Output Token Limit!
+    regions = [
+        "Maharashtra", "Karnataka", "Tamil Nadu", "Delhi", "Telangana", 
+        "Uttar Pradesh", "Gujarat", "West Bengal", "Andhra Pradesh", 
+        "Kerala", "Rajasthan", "Madhya Pradesh", "Punjab", "Odisha"
+    ]
     all_colleges = []
     
     for region in regions:
@@ -255,7 +259,7 @@ def discover_all_colleges():
         context = search_web(f"List of top BE BTech and ME MTech engineering colleges across {region} with official Institute Codes")
         
         prompt = f"""
-        Generate a comprehensive list of top engineering colleges offering B.E./B.Tech and M.E./M.Tech degrees across {region}.
+        Generate a comprehensive list of up to 30 top engineering colleges offering B.E./B.Tech and M.E./M.Tech degrees across {region}.
         You MUST include their official admission code or AICTE Institute ID (e.g., JoSAA code, COMEDK code, or State Code).
         
         Context: {context}
@@ -330,10 +334,10 @@ def run_nightly_cron_job():
     print(f"Loaded {len(colleges)} colleges for processing.")
 
     # Using ThreadPoolExecutor to run tasks concurrently
-    # Max Workers sets how many background threads run at exactly the same time.
+    # Max Workers set to 3 to prevent DuckDuckGo rate limiting (ConnectTimeout)
     start_time = time.time()
     
-    with ThreadPoolExecutor(max_workers=15) as executor:
+    with ThreadPoolExecutor(max_workers=3) as executor:
         futures = []
 
         # Queue up all tasks
