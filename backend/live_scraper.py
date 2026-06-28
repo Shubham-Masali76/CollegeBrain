@@ -76,9 +76,14 @@ def cutoff_scraper_thread(task):
     time.sleep(random.uniform(1.0, 3.0))
     context = search_web(q1) + search_web(q2) + search_web(q3) + search_web(q4)
     
+    if not context.strip():
+        print(f"[Thread-Cutoffs] SKIPPING {institute_code} - Web search failed, preventing AI guessing.")
+        return False
+    
     prompt = f"""
     You are an expert admission counselor extracting cutoff metrics from search results for {college_name}.
     Based on the following search snippets, extract the cutoff percentiles for various exams.
+    CRITICAL: DO NOT guess or estimate cutoffs. If the cutoffs are not explicitly in the context, return an empty array.
     
     Search Context:
     {context}
@@ -218,10 +223,14 @@ def agentic_web_scraper_thread(task):
     time.sleep(random.uniform(1.0, 3.0))
     context = search_web(q1) + search_web(q2) + search_web(q3)
     
+    if not context.strip():
+        print(f"[Thread-Scraper] SKIPPING {institute_code} - Web search failed, preventing AI guessing.")
+        return False
+    
     prompt = f"""
     You are an expert admission counselor extracting metrics from search results for {college_name}.
     Based on the following search snippets, extract the numerical metrics requested.
-    If a metric is not found, make an educated estimation based on typical engineering colleges in Maharashtra.
+    CRITICAL: DO NOT guess, hallucinate, or estimate any metrics. If a metric is not explicitly found in the Search Context, return 0 for ints/floats.
     
     Search Context:
     {context}
