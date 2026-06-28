@@ -49,6 +49,20 @@ def cutoff_scraper_thread(task):
     """
     institute_code = task.get('institute_code')
     college_name = task.get('name', f"College {institute_code}")
+    
+    # Smart Skip: Check if we already have cutoffs for this college
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT COUNT(*) FROM cutoffs 
+            JOIN programs ON cutoffs.program_id = programs.id 
+            JOIN colleges ON programs.college_id = colleges.id 
+            WHERE colleges.institute_code = ?
+        """, (institute_code,))
+        if cursor.fetchone()[0] > 0:
+            print(f"[Thread-Cutoffs] SKIPPING {institute_code} - Cutoffs already extracted.")
+            return True
+
     print(f"[Thread-Cutoffs] CRAWLING web for {college_name} cutoffs...")
     
     # 1. Search Web
@@ -160,6 +174,16 @@ def agentic_web_scraper_thread(task):
     """
     institute_code = task['institute_code']
     college_name = task['name']
+
+    # Smart Skip: Check if we already have metrics for this college
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT median_placement_lpa FROM colleges WHERE institute_code = ?", (institute_code,))
+        res = cursor.fetchone()
+        if res and res[0] > 0:
+            print(f"[Thread-Scraper] SKIPPING {institute_code} - Web metrics already parsed.")
+            return True
+
     print(f"[Thread-Scraper] AGENT CRAWLING web for {college_name}...")
     
     # 1. Search Web
