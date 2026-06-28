@@ -255,16 +255,26 @@ def discover_region(region):
     
     Context: {context}
     
-    Format the response as a valid JSON array of objects.
-    Example:
-    [
-        {{"institute_code": "EN1234", "name": "College Name", "city": "City", "state": "{region}", "university": "State University"}}
-    ]
-    ONLY RETURN JSON. NO MARKDOWN OR BACKTICKS.
+    Return ONLY valid JSON matching this exact schema:
+    {{
+      "colleges": [
+        {{
+          "institute_code": "KA-102",
+          "name": "RV College of Engineering",
+          "city": "Bengaluru",
+          "state": "{region}"
+        }}
+      ]
+    }}
     """
     try:
-        response = get_llm_json(prompt, system_prompt="You are an expert Indian engineering admissions data extractor. Only output valid JSON.")
-        return response if isinstance(response, list) else []
+        response = groq_client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[{"role": "user", "content": prompt}],
+            response_format={"type": "json_object"}
+        )
+        data = json.loads(response.choices[0].message.content)
+        return data.get("colleges", [])
     except Exception as e:
         print(f"[Pipeline 0 Error] Failed to extract colleges for {region}: {e}")
         return []
@@ -282,8 +292,8 @@ def discover_all_colleges():
     ]
     all_colleges = []
     
-    # Parallelize the discovery phase! Max workers=6 (increased for speed)
-    with ThreadPoolExecutor(max_workers=6) as executor:
+    # Parallelize the discovery phase! Max workers=3 to avoid DDGS block.
+    with ThreadPoolExecutor(max_workers=3) as executor:
         future_to_region = {executor.submit(discover_region, region): region for region in regions}
         for future in as_completed(future_to_region):
             region = future_to_region[future]
