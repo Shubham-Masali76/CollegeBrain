@@ -4,6 +4,7 @@ import random
 import threading
 import json
 import os
+import re
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dotenv import load_dotenv
 from ddgs import DDGS
@@ -134,7 +135,7 @@ def cutoff_scraper_thread(task):
     return True
 
 def call_llm_with_retry(prompt, task_name="LLM"):
-    """Helper to handle 429 Rate Limits from Groq and Gemini with a 10-second pause and retry."""
+    """Helper to handle Rate Limits from Groq and Gemini. Instantly falls back to Gemini if Groq limits are hit."""
     for attempt in range(3):
         try:
             response = groq_client.chat.completions.create(
@@ -146,27 +147,34 @@ def call_llm_with_retry(prompt, task_name="LLM"):
         except Exception as e:
             err_str = str(e).lower()
             if "rate limit" in err_str or "429" in err_str:
-                print(f"[{task_name}] Groq Rate Limit! Pausing 10s... (Attempt {attempt+1}/3)")
-                time.sleep(10)
+                print(f"[{task_name}] Groq Rate Limit hit. Falling back to Gemini instantly...")
             else:
                 print(f"[{task_name}] Groq Error: {e}. Falling back to Gemini...")
-                try:
-                    response = gemini_client.models.generate_content(
-                        model='gemini-2.5-flash',
-                        contents=prompt,
-                    )
-                    raw = response.text
-                    if raw.startswith("```json"):
-                        raw = raw[7:-3]
-                    return json.loads(raw)
-                except Exception as e2:
-                    err2_str = str(e2).lower()
-                    if "rate limit" in err2_str or "429" in err2_str:
-                        print(f"[{task_name}] Gemini Rate Limit! Pausing 10s... (Attempt {attempt+1}/3)")
-                        time.sleep(10)
-                    else:
-                        print(f"[{task_name}] Gemini Error: {e2}")
-                        return None
+                
+            try:
+                response = gemini_client.models.generate_content(
+                    model='gemini-2.5-flash',
+                    contents=prompt,
+                )
+                raw = response.text
+                if raw.startswith("```json"):
+                    raw = raw[7:-3]
+                return json.loads(raw)
+            except Exception as e2:
+                err2_str = str(e2).lower()
+                if "rate limit" in err2_str or "429" in err2_str or "rate limit" in err_str or "429" in err_str:
+                    wait_time = 60 # Default wait 60s if both are exhausted
+                    
+                    # Try to parse exact wait time from the original Groq error
+                    match = re.search(r"try again in ([\d.]+)s", err_str)
+                    if match:
+                        wait_time = max(float(match.group(1)), 10.0)
+                        
+                    print(f"[{task_name}] BOTH APIs exhausted! Pausing {wait_time}s... (Attempt {attempt+1}/3)")
+                    time.sleep(wait_time)
+                else:
+                    print(f"[{task_name}] Gemini Error: {e2}")
+                    return None
     return None
 
 def search_web(query):
