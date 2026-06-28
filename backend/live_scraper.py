@@ -178,23 +178,15 @@ def call_llm_with_retry(prompt, task_name="LLM"):
     return None
 
 def search_web(query):
-    for attempt in range(3):
-        try:
-            results = DDGS().text(query, max_results=3)
-            context = ""
-            for r in results:
-                context += f"Title: {r['title']}\nSnippet: {r['body']}\n\n"
-            return context
-        except Exception as e:
-            err_str = str(e).lower()
-            if "timeout" in err_str or "10061" in err_str or "rate limit" in err_str:
-                # DDGS does not give a specific "wait X seconds" string, so we use Exponential Backoff
-                wait_time = (attempt + 1) * 5 
-                print(f"[DDGS Rate Limit] Pausing {wait_time}s... (Attempt {attempt+1}/3)")
-                time.sleep(wait_time)
-            else:
-                return ""
-    return ""
+    try:
+        results = DDGS().text(query, max_results=3)
+        context = ""
+        for r in results:
+            context += f"Title: {r['title']}\nSnippet: {r['body']}\n\n"
+        return context
+    except Exception as e:
+        print(f"[DDGS Error] Skipping search due to {e}...")
+        return ""
 
 # ---------------------------------------------------------
 # PIPELINE B & C: THE AGENTIC WEB SCRAPER (FINANCE, PLACEMENTS & SENTIMENT)
