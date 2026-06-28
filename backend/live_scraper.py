@@ -96,28 +96,7 @@ def cutoff_scraper_thread(task):
     If no cutoffs are found, return an empty array for cutoffs.
     """
     
-    data = None
-    try:
-        response = groq_client.chat.completions.create(
-            messages=[{"role": "user", "content": prompt}],
-            model="llama-3.3-70b-versatile",
-            response_format={"type": "json_object"}
-        )
-        data = json.loads(response.choices[0].message.content)
-    except Exception as e:
-        print(f"[Cutoff Groq Error for {college_name}] {e}. Falling back to Gemini...")
-        try:
-            response = gemini_client.models.generate_content(
-                model='gemini-2.5-flash',
-                contents=prompt,
-            )
-            raw = response.text
-            if raw.startswith("```json"):
-                raw = raw[7:-3]
-            data = json.loads(raw)
-        except Exception as e2:
-            print(f"[Cutoff Gemini Error for {college_name}] {e2}")
-            return False
+    data = call_llm_with_retry(prompt, f"Cutoffs - {institute_code}")
 
     if not data or 'cutoffs' not in data:
         return False
@@ -154,16 +133,58 @@ def cutoff_scraper_thread(task):
     print(f"[Thread-Cutoffs] SUCCESS: {institute_code} extracted {len(extracted_cutoffs)} distinct cutoffs!")
     return True
 
+def call_llm_with_retry(prompt, task_name="LLM"):
+    """Helper to handle 429 Rate Limits from Groq and Gemini with a 10-second pause and retry."""
+    for attempt in range(3):
+        try:
+            response = groq_client.chat.completions.create(
+                messages=[{"role": "user", "content": prompt}],
+                model="llama-3.3-70b-versatile",
+                response_format={"type": "json_object"}
+            )
+            return json.loads(response.choices[0].message.content)
+        except Exception as e:
+            err_str = str(e).lower()
+            if "rate limit" in err_str or "429" in err_str:
+                print(f"[{task_name}] Groq Rate Limit! Pausing 10s... (Attempt {attempt+1}/3)")
+                time.sleep(10)
+            else:
+                print(f"[{task_name}] Groq Error: {e}. Falling back to Gemini...")
+                try:
+                    response = gemini_client.models.generate_content(
+                        model='gemini-2.5-flash',
+                        contents=prompt,
+                    )
+                    raw = response.text
+                    if raw.startswith("```json"):
+                        raw = raw[7:-3]
+                    return json.loads(raw)
+                except Exception as e2:
+                    err2_str = str(e2).lower()
+                    if "rate limit" in err2_str or "429" in err2_str:
+                        print(f"[{task_name}] Gemini Rate Limit! Pausing 10s... (Attempt {attempt+1}/3)")
+                        time.sleep(10)
+                    else:
+                        print(f"[{task_name}] Gemini Error: {e2}")
+                        return None
+    return None
+
 def search_web(query):
-    try:
-        results = DDGS().text(query, max_results=3)
-        context = ""
-        for r in results:
-            context += f"Title: {r['title']}\nSnippet: {r['body']}\n\n"
-        return context
-    except Exception as e:
-        print(f"[DDGS Error] {e}")
-        return ""
+    for attempt in range(3):
+        try:
+            results = DDGS().text(query, max_results=3)
+            context = ""
+            for r in results:
+                context += f"Title: {r['title']}\nSnippet: {r['body']}\n\n"
+            return context
+        except Exception as e:
+            err_str = str(e).lower()
+            if "timeout" in err_str or "10061" in err_str or "rate limit" in err_str:
+                print(f"[DDGS Rate Limit] Pausing 5s... (Attempt {attempt+1}/3)")
+                time.sleep(5)
+            else:
+                return ""
+    return ""
 
 # ---------------------------------------------------------
 # PIPELINE B & C: THE AGENTIC WEB SCRAPER (FINANCE, PLACEMENTS & SENTIMENT)
@@ -219,28 +240,7 @@ def agentic_web_scraper_thread(task):
     }}
     """
     
-    data = None
-    try:
-        response = groq_client.chat.completions.create(
-            messages=[{"role": "user", "content": prompt}],
-            model="llama-3.3-70b-versatile",
-            response_format={"type": "json_object"}
-        )
-        data = json.loads(response.choices[0].message.content)
-    except Exception as e:
-        print(f"[Groq Error for {college_name}] {e}. Falling back to Gemini...")
-        try:
-            response = gemini_client.models.generate_content(
-                model='gemini-2.5-flash',
-                contents=prompt,
-            )
-            raw = response.text
-            if raw.startswith("```json"):
-                raw = raw[7:-3]
-            data = json.loads(raw)
-        except Exception as e2:
-            print(f"[Gemini Error for {college_name}] {e2}")
-            return False
+    data = call_llm_with_retry(prompt, f"WebScraper - {institute_code}")
 
     if not data:
         return False
@@ -291,17 +291,10 @@ def discover_region(region):
       ]
     }}
     """
-    try:
-        response = groq_client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
-            messages=[{"role": "user", "content": prompt}],
-            response_format={"type": "json_object"}
-        )
-        data = json.loads(response.choices[0].message.content)
+    data = call_llm_with_retry(prompt, f"Pipeline 0 - {region}")
+    if data and "colleges" in data:
         return data.get("colleges", [])
-    except Exception as e:
-        print(f"[Pipeline 0 Error] Failed to extract colleges for {region}: {e}")
-        return []
+    return []
 
 def discover_all_colleges():
     # Loop through ALL 28 States and 8 Union Territories to guarantee zero misses
