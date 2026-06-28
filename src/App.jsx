@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import axios from 'axios'
 import { Reorder } from 'framer-motion'
 import { GraduationCap, MapPin, GripVertical, Download, Shield, ChevronDown } from 'lucide-react'
@@ -14,6 +14,19 @@ export default function App() {
   const [colleges, setColleges] = useState([])
   const [loading, setLoading] = useState(false)
   const [hasSearched, setHasSearched] = useState(false)
+  const [totalColleges, setTotalColleges] = useState(0)
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const res = await axios.get('http://localhost:8000/api/stats')
+        setTotalColleges(res.data.total_colleges)
+      } catch (e) {
+        console.error("Could not fetch stats:", e)
+      }
+    }
+    fetchStats()
+  }, [])
 
   const handleGenerate = async () => {
     setLoading(true)
@@ -47,6 +60,11 @@ export default function App() {
           <div>
             <h1 className="text-3xl font-bold tracking-tight">CollegeBrain</h1>
             <p className="text-gray-400">The Ultimate 100% Accurate Admission Analyzer</p>
+            {totalColleges > 0 && (
+              <p className="text-sm font-semibold text-blue-400 mt-1">
+                Currently scanning data from {totalColleges.toLocaleString()} top engineering colleges in India!
+              </p>
+            )}
           </div>
         </div>
 

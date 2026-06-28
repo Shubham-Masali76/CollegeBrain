@@ -206,6 +206,15 @@ def get_locations():
 def health_check():
     return {"status": "CollegeBrain API is Online."}
 
+@app.get("/api/stats")
+def get_stats():
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("SELECT COUNT(*) FROM colleges")
+    count = cursor.fetchone()[0]
+    conn.close()
+    return {"total_colleges": count}
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
