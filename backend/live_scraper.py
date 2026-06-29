@@ -23,6 +23,21 @@ gemini_client = genai.Client(api_key=GEMINI_API_KEY)
 # Threading Lock to prevent SQLite database corruption when 20 threads write at once
 db_lock = threading.Lock()
 
+# Global LLM Rate Limiter (to prevent 429 API Exhaustion)
+llm_lock = threading.Lock()
+last_llm_call_time = 0
+
+def enforce_rate_limit():
+    global last_llm_call_time
+    with llm_lock:
+        now = time.time()
+        elapsed = now - last_llm_call_time
+        # Max 15 RPM (4.5 seconds per request) to stay safely under Gemini & Groq limits
+        if elapsed < 4.5:
+            time.sleep(4.5 - elapsed)
+        last_llm_call_time = time.time()
+
+
 # ---------------------------------------------------------
 # DATABASE CONNECTION HELPER (THREAD SAFE)
 # ---------------------------------------------------------
@@ -169,6 +184,7 @@ def cutoff_scraper_thread(task):
 def call_llm_with_retry(prompt, task_name="LLM"):
     """Helper to handle Rate Limits from Groq and Gemini. Instantly falls back to Gemini if Groq limits are hit."""
     for attempt in range(3):
+        enforce_rate_limit()
         try:
             response = groq_client.chat.completions.create(
                 messages=[{"role": "user", "content": prompt}],
@@ -184,6 +200,7 @@ def call_llm_with_retry(prompt, task_name="LLM"):
                 print(f"[{task_name}] Groq Error: {e}. Falling back to Gemini...")
                 
             try:
+                enforce_rate_limit()
                 response = gemini_client.models.generate_content(
                     model='gemini-2.5-flash',
                     contents=prompt,

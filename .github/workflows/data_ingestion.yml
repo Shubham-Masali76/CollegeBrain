@@ -1,0 +1,47 @@
+name: Master Ingestion Engine
+
+on:
+  workflow_dispatch: # Allows manual trigger from GitHub UI
+  schedule:
+    - cron: '0 2 * * 0' # Automatically runs every Sunday at 2:00 AM UTC
+
+jobs:
+  scrape-and-update:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # Needed to commit the database back to the repo
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install uv
+        run: curl -LsSf https://astral.sh/uv/install.sh | sh
+
+      - name: Install Dependencies
+        run: |
+          cd backend
+          $HOME/.cargo/bin/uv pip install --system fastapi uvicorn pydantic python-dotenv groq google-genai duckduckgo-search requests
+        # Or if you have a requirements.txt, you can use that.
+
+      - name: Run AI Scraper
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          cd backend
+          python live_scraper.py
+
+      - name: Commit Updated Database
+        run: |
+          git config --global user.name "CollegeBrain Bot"
+          git config --global user.email "bot@collegebrain.ai"
+          git add backend/collegebrain.db
+          # Only commit if there are changes
+          git diff --quiet && git diff --staged --quiet || git commit -m "chore: auto-update college database [skip ci]"
+          git push
