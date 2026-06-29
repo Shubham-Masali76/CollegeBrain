@@ -51,7 +51,7 @@ def recommend_colleges(profile: StudentProfile):
         FROM colleges c
         JOIN programs p ON c.id = p.college_id
         JOIN cutoffs cu ON p.id = cu.program_id
-        JOIN fees f ON p.college_id = f.college_id
+        JOIN fees f ON p.college_id = f.college_id AND f.category = ?
         WHERE cu.round_number = 1 
           AND (cu.category = ? OR cu.category LIKE '%' || ? || '%')
           AND (cu.exam_type LIKE '%' || ? || '%' OR ? = '')
@@ -96,8 +96,16 @@ def recommend_colleges(profile: StudentProfile):
     else:
         branch = profile.preferred_branch if profile.preferred_branch else ""
     
+    # 4. Smart Fee Category Mapping
+    if cat in ["SC", "ST", "TFWS"]:
+        fee_cat = "SC_ST"
+    elif cat in ["OBC", "EBC", "VJNT", "NT"]:
+        fee_cat = "OBC"
+    else:
+        fee_cat = "OPEN"
+    
     # Execute query
-    params = (cat, cat, exam, exam, profile.preferred_city, profile.preferred_city, branch, branch)
+    params = (fee_cat, cat, cat, exam, exam, profile.preferred_city, profile.preferred_city, branch, branch)
     cursor.execute(query, params)
     rows = cursor.fetchall()
     
@@ -159,14 +167,6 @@ def recommend_colleges(profile: StudentProfile):
 
     # Sort by match score
     final_colleges.sort(key=lambda x: x["match_score"], reverse=True)
-
-    # Apply Dynamic Category-Wise Fee Reduction
-    cat = profile.category.upper()
-    for c in final_colleges:
-        if cat in ["SC", "ST", "TFWS"]:
-            c["tuition_fee"] = 0
-        elif cat in ["OBC", "EBC", "VJNT", "NT"]:
-            c["tuition_fee"] = int(c["tuition_fee"] / 2)
             
     # Calculate Ranking Justification
     for idx, c in enumerate(final_colleges):

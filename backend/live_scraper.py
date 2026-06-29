@@ -234,15 +234,17 @@ def agentic_web_scraper_thread(task):
     {{
       "highest_placement_lpa": float,
       "median_placement_lpa": float,
-      "mass_recruiter_percent": int (0-100),
-      "tuition_fee": int,
+      "mass_recruiter_percent": int,
+      "tuition_fee_open": int,
+      "tuition_fee_obc": int,
+      "tuition_fee_sc_st": int,
       "hostel_fee": int,
       "mess_fee": int,
       "city_avg_pg_cost": int,
-      "infrastructure_score": float (0-10),
-      "alumni_network_score": float (0-10),
-      "hostel_rating": float (0-10),
-      "mess_rating": float (0-10)
+      "infrastructure_score": float,
+      "alumni_network_score": float,
+      "hostel_rating": float,
+      "mess_rating": float
     }}
     """
     
@@ -264,8 +266,19 @@ def agentic_web_scraper_thread(task):
     with db_lock:
         conn = get_db_connection()
         cursor = conn.cursor()
-        cursor.execute("UPDATE fees SET tuition_fee=?, hostel_fee=?, mess_fee=? WHERE program_id = (SELECT id FROM programs WHERE college_id = (SELECT id FROM colleges WHERE institute_code = ?) LIMIT 1)", 
-            (data.get('tuition_fee', 0), data.get('hostel_fee', 0), data.get('mess_fee', 0), institute_code))
+        cursor.execute("SELECT id FROM colleges WHERE institute_code = ?", (institute_code,))
+        college_res = cursor.fetchone()
+        if college_res:
+            c_id = college_res['id']
+            # OPEN
+            cursor.execute("INSERT INTO fees (college_id, category, tuition_fee, development_fee, hostel_fee, mess_fee) VALUES (?, ?, ?, ?, ?, ?)", 
+                (c_id, 'OPEN', data.get('tuition_fee_open', 0), 0, data.get('hostel_fee', 0), data.get('mess_fee', 0)))
+            # OBC
+            cursor.execute("INSERT INTO fees (college_id, category, tuition_fee, development_fee, hostel_fee, mess_fee) VALUES (?, ?, ?, ?, ?, ?)", 
+                (c_id, 'OBC', data.get('tuition_fee_obc', 0), 0, data.get('hostel_fee', 0), data.get('mess_fee', 0)))
+            # SC_ST
+            cursor.execute("INSERT INTO fees (college_id, category, tuition_fee, development_fee, hostel_fee, mess_fee) VALUES (?, ?, ?, ?, ?, ?)", 
+                (c_id, 'SC_ST', data.get('tuition_fee_sc_st', 0), 0, data.get('hostel_fee', 0), data.get('mess_fee', 0)))
         conn.commit()
         conn.close()
 
