@@ -58,7 +58,7 @@ def cutoff_scraper_thread(task):
             SELECT COUNT(*) FROM cutoffs 
             JOIN programs ON cutoffs.program_id = programs.id 
             JOIN colleges ON programs.college_id = colleges.id 
-            WHERE colleges.institute_code = ?
+            WHERE colleges.institute_code = ? AND cutoffs.exam_type IN ('Diploma', 'DSE')
         """, (institute_code,))
         if cursor.fetchone()[0] > 0:
             print(f"[Thread-Cutoffs] SKIPPING {institute_code} - Cutoffs already extracted.")
@@ -66,15 +66,12 @@ def cutoff_scraper_thread(task):
 
     print(f"[Thread-Cutoffs] CRAWLING web for {college_name} cutoffs...")
     
-    # 1. Search Web
-    q1 = f"{college_name} MHT CET cutoffs category wise GOPEN OBC SC ST 2023 2024"
-    q2 = f"{college_name} JEE Mains Advanced cutoff percentiles 2023"
-    q3 = f"{college_name} Direct Second Year Diploma DSE cutoff percentiles"
-    q4 = f"{college_name} M.E. M.Tech GATE PERA CET Non-GATE cutoff percentiles"
+    # 1. Search Web ONLY for DSE / Diploma
+    q1 = f"{college_name} Direct Second Year Engineering DSE Diploma cutoff percentiles category wise GOPEN OBC SC ST 2023 2024"
     
     # Rate limit protection for DDGS
     time.sleep(random.uniform(1.0, 3.0))
-    context = search_web(q1) + search_web(q2) + search_web(q3) + search_web(q4)
+    context = search_web(q1)
     
     if not context.strip():
         print(f"[Thread-Cutoffs] SKIPPING {institute_code} - Web search failed, preventing AI guessing.")
@@ -82,8 +79,8 @@ def cutoff_scraper_thread(task):
     
     prompt = f"""
     You are an expert admission counselor extracting cutoff metrics from search results for {college_name}.
-    Based on the following search snippets, extract the cutoff percentiles for various exams.
-    CRITICAL: DO NOT guess or estimate cutoffs. If the cutoffs are not explicitly in the context, return an empty array.
+    Based on the following search snippets, extract the DIRECT SECOND YEAR (DSE) / Diploma cutoff percentiles.
+    CRITICAL: DO NOT guess or estimate cutoffs. If the DSE cutoffs are not explicitly in the context, return an empty array.
     
     Search Context:
     {context}
@@ -92,14 +89,14 @@ def cutoff_scraper_thread(task):
     {{
       "cutoffs": [
         {{
-          "exam_type": "MHT-CET", // or "JEE", "JEE-Adv", "Diploma", "GATE", "PERA-CET", "Non-GATE"
+          "exam_type": "Diploma", // MUST BE "Diploma" or "DSE"
           "category": "GOPEN", // or OBC, SC, ST, EWS
-          "percentile": 99.4,
+          "percentile": 92.4, // DSE cutoffs are usually high (85-99)
           "sml": 120 // or null if not found
         }}
       ]
     }}
-    If no cutoffs are found, return an empty array for cutoffs.
+    If no DSE cutoffs are found, return an empty array for cutoffs.
     """
     
     data = call_llm_with_retry(prompt, f"Cutoffs - {institute_code}")
