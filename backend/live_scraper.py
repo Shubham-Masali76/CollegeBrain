@@ -90,7 +90,7 @@ def cutoff_scraper_thread(task):
       "cutoffs": [
         {{
           "exam_type": "Diploma", // MUST BE "Diploma" or "DSE"
-          "category": "GOPEN", // Extract ALL categories found: GOPEN, LOPEN, OBC, SC, ST, VJ, NT1, NT2, NT3, EWS, TFWS, SBC
+          "category": "GOPEN", // Extract EVERY SINGLE category found in the text (including unlisted ones like DEF, PWD, ORPHAN, etc.)
           "percentile": 92.4, // DSE cutoffs are usually high (85-99)
           "sml": 120 // or null if not found
         }}
