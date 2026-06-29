@@ -54,7 +54,7 @@ def recommend_colleges(profile: StudentProfile):
         JOIN fees f ON p.college_id = f.college_id AND f.category = ?
         WHERE cu.round_number = 1 
           AND (cu.category = ? OR cu.category LIKE '%' || ? || '%')
-          AND (cu.exam_type LIKE '%' || ? || '%' OR ? = '')
+          AND (cu.exam_type LIKE '%' || ? || '%' OR (cu.exam_type LIKE '%DSE%' AND ? = 'DIPLOMA') OR ? = '')
           AND (c.city = ? OR ? = '')
           AND (p.branch_name LIKE '%' || ? || '%' OR ? = '')
     """
@@ -68,8 +68,9 @@ def recommend_colleges(profile: StudentProfile):
         
     # 2. Smart Exam Mapping
     raw_exam = profile.exam_type.upper().strip() if profile.exam_type else ""
-    if "DIPLOMA" in raw_exam or "DSE" in raw_exam:
-        exam = "DSE"
+    is_dse = "DIPLOMA" in raw_exam or "DSE" in raw_exam
+    if is_dse:
+        exam = "DIPLOMA"
     elif "JEE" in raw_exam or "MAINS" in raw_exam:
         exam = "JEE"
     elif "MHT" in raw_exam or "CET" in raw_exam:
@@ -105,7 +106,7 @@ def recommend_colleges(profile: StudentProfile):
         fee_cat = "OPEN"
     
     # Execute query
-    params = (fee_cat, cat, cat, exam, exam, profile.preferred_city, profile.preferred_city, branch, branch)
+    params = (fee_cat, cat, cat, exam, exam, exam, profile.preferred_city, profile.preferred_city, branch, branch)
     cursor.execute(query, params)
     rows = cursor.fetchall()
     

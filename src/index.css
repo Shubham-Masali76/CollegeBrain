@@ -3,6 +3,8 @@
 @layer base {
   body {
     background-color: #030712;
+    background-image: radial-gradient(circle at 50% 0%, #0c4a6e 0%, #030712 60%);
+    background-attachment: fixed;
     color: white;
     -webkit-font-smoothing: antialiased;
   }
@@ -17,3 +19,56 @@
     -moz-appearance: textfield;
   }
 }
+
+@layer utilities {
+  .glass {
+    background: rgba(3, 7, 18, 0.4);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+  }
+  
+  .glass-input {
+    background: rgba(17, 24, 39, 0.5);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: all 0.3s ease;
+  }
+  
+  .glass-input:focus {
+    border-color: rgba(34, 211, 238, 0.5);
+    box-shadow: 0 0 15px rgba(34, 211, 238, 0.2);
+    outline: none;
+  }
+
+  .neon-text {
+    background-image: linear-gradient(to right, #22d3ee, #3b82f6);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .neon-button {
+    background: linear-gradient(135deg, #0ea5e9 0%, #2563eb 100%);
+    box-shadow: 0 0 20px rgba(37, 99, 235, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    transition: all 0.3s ease;
+  }
+  
+  .neon-button:hover:not(:disabled) {
+    box-shadow: 0 0 30px rgba(34, 211, 238, 0.6);
+    transform: translateY(-2px);
+  }
+}
+
+@keyframes float {
+  0% { transform: translateY(0px); }
+  50% { transform: translateY(-15px); }
+  100% { transform: translateY(0px); }
+}
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
