@@ -7,7 +7,7 @@ import os
 import re
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dotenv import load_dotenv
-from duckduckgo_search import DDGS
+from ddgs import DDGS
 from groq import Groq
 from google import genai
 from database import init_db

@@ -3,7 +3,7 @@ name: Master Ingestion Engine
 on:
   workflow_dispatch: # Allows manual trigger from GitHub UI
   schedule:
-    - cron: '0 2 * * 0' # Automatically runs every Sunday at 2:00 AM UTC
+    - cron: '0 0 * * 0' # Automatically run every Sunday at midnight UTC
 
 jobs:
   scrape-and-update:
@@ -28,7 +28,7 @@ jobs:
       - name: Install Dependencies
         run: |
           cd backend
-          uv pip install --system fastapi uvicorn pydantic python-dotenv groq google-genai duckduckgo-search requests
+          uv pip install --system fastapi uvicorn pydantic python-dotenv groq google-genai ddgs requests
         # Or if you have a requirements.txt, you can use that.
 
       - name: Run AI Scraper
