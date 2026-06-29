@@ -99,8 +99,8 @@ def recommend_colleges(profile: StudentProfile):
     # 4. Smart Fee Category Mapping
     if cat in ["SC", "ST", "TFWS"]:
         fee_cat = "SC_ST"
-    elif cat in ["OBC", "EBC", "VJNT", "NT"]:
-        fee_cat = "OBC"
+    elif cat in ["OBC", "EBC", "EWS", "VJNT", "VJ", "NT", "NT1", "NT2", "NT3", "SBC"]:
+        fee_cat = "OBC_EWS"
     else:
         fee_cat = "OPEN"
     

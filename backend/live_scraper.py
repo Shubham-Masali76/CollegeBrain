@@ -90,7 +90,7 @@ def cutoff_scraper_thread(task):
       "cutoffs": [
         {{
           "exam_type": "Diploma", // MUST BE "Diploma" or "DSE"
-          "category": "GOPEN", // or OBC, SC, ST, EWS
+          "category": "GOPEN", // Extract ALL categories found: GOPEN, LOPEN, OBC, SC, ST, VJ, NT1, NT2, NT3, EWS, TFWS, SBC
           "percentile": 92.4, // DSE cutoffs are usually high (85-99)
           "sml": 120 // or null if not found
         }}
@@ -236,8 +236,8 @@ def agentic_web_scraper_thread(task):
       "median_placement_lpa": float,
       "mass_recruiter_percent": int,
       "tuition_fee_open": int,
-      "tuition_fee_obc": int,
-      "tuition_fee_sc_st": int,
+      "tuition_fee_obc_ews_vjnt": int,
+      "tuition_fee_sc_st_tfws": int,
       "hostel_fee": int,
       "mess_fee": int,
       "city_avg_pg_cost": int,
@@ -273,12 +273,12 @@ def agentic_web_scraper_thread(task):
             # OPEN
             cursor.execute("INSERT INTO fees (college_id, category, tuition_fee, development_fee, hostel_fee, mess_fee) VALUES (?, ?, ?, ?, ?, ?)", 
                 (c_id, 'OPEN', data.get('tuition_fee_open', 0), 0, data.get('hostel_fee', 0), data.get('mess_fee', 0)))
-            # OBC
+            # OBC / EWS / VJNT / NT / SBC
             cursor.execute("INSERT INTO fees (college_id, category, tuition_fee, development_fee, hostel_fee, mess_fee) VALUES (?, ?, ?, ?, ?, ?)", 
-                (c_id, 'OBC', data.get('tuition_fee_obc', 0), 0, data.get('hostel_fee', 0), data.get('mess_fee', 0)))
-            # SC_ST
+                (c_id, 'OBC_EWS', data.get('tuition_fee_obc_ews_vjnt', 0), 0, data.get('hostel_fee', 0), data.get('mess_fee', 0)))
+            # SC / ST / TFWS
             cursor.execute("INSERT INTO fees (college_id, category, tuition_fee, development_fee, hostel_fee, mess_fee) VALUES (?, ?, ?, ?, ?, ?)", 
-                (c_id, 'SC_ST', data.get('tuition_fee_sc_st', 0), 0, data.get('hostel_fee', 0), data.get('mess_fee', 0)))
+                (c_id, 'SC_ST', data.get('tuition_fee_sc_st_tfws', 0), 0, data.get('hostel_fee', 0), data.get('mess_fee', 0)))
         conn.commit()
         conn.close()
 
