@@ -211,14 +211,12 @@ def agentic_web_scraper_thread(task):
 
     print(f"[Thread-Scraper] AGENT CRAWLING web for {college_name}...")
     
-    # 1. Search Web
-    q1 = f"{college_name} highest median placement LPA service based recruiter percentage 2023 2024"
-    q2 = f"{college_name} BTech tuition fee hostel mess fee structure"
-    q3 = f"{college_name} campus infrastructure hostel mess review rating"
+    # 1. Search Web (ONE single laser-focused query to prevent DDGS timeouts)
+    q1 = f"{college_name} highest median placement LPA tuition fees hostel mess infrastructure reviews"
     
     # Rate limit protection for DDGS
     time.sleep(random.uniform(1.0, 3.0))
-    context = search_web(q1) + search_web(q2) + search_web(q3)
+    context = search_web(q1)
     
     if not context.strip():
         print(f"[Thread-Scraper] SKIPPING {institute_code} - Web search failed, preventing AI guessing.")
