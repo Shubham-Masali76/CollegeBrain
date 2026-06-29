@@ -8,7 +8,6 @@ export default function App() {
   const [category, setCategory] = useState('')
   const [branch, setBranch] = useState('')
   const [city, setCity] = useState('')
-  const [examType, setExamType] = useState('')
   const [budget, setBudget] = useState('')
   const [isBudgetOpen, setIsBudgetOpen] = useState(false)
   const [colleges, setColleges] = useState([])
@@ -34,7 +33,7 @@ export default function App() {
       const res = await axios.post('http://localhost:8000/api/recommend', {
         percentile: parseFloat(percentile) || 0,
         category,
-        exam_type: examType,
+        exam_type: "Diploma",
         preferred_branch: branch,
         preferred_city: city,
         budget: budget ? parseInt(budget) : null
@@ -95,16 +94,6 @@ export default function App() {
           
           <div className="flex flex-col md:flex-row gap-4 items-end">
             <div className="flex-1 w-full">
-              <label className="block text-sm font-medium text-gray-400 mb-2">Exam Type</label>
-              <input 
-                type="text"
-                placeholder="e.g. MHT-CET, JEE, GATE"
-                value={examType}
-                onChange={(e) => setExamType(e.target.value)}
-                className="w-full bg-gray-950 border border-gray-800 rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors"
-              />
-            </div>
-            <div className="flex-1 w-full">
               <label className="block text-sm font-medium text-gray-400 mb-2">Branch / Course</label>
               <input 
                 type="text"
@@ -114,9 +103,6 @@ export default function App() {
                 className="w-full bg-gray-950 border border-gray-800 rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors"
               />
             </div>
-          </div>
-
-          <div className="flex flex-col md:flex-row gap-4 items-end">
             <div className="flex-1 w-full">
               <label className="block text-sm font-medium text-gray-400 mb-2">Target City</label>
               <input 
@@ -127,6 +113,9 @@ export default function App() {
                 className="w-full bg-gray-950 border border-gray-800 rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors"
               />
             </div>
+          </div>
+
+          <div className="flex flex-col md:flex-row gap-4 items-end">
             <div className="flex-1 w-full relative">
               <label className="block text-sm font-medium text-gray-400 mb-2">Max Budget (Per Year)</label>
               <button 
@@ -171,7 +160,7 @@ export default function App() {
         {hasSearched && colleges.length === 0 && (
           <div className="bg-gray-900 border border-gray-800 p-8 rounded-2xl text-center">
             <h2 className="text-xl font-bold text-gray-300">No Colleges Found</h2>
-            <p className="text-gray-500 mt-2">We couldn't find any colleges matching your criteria. Try adjusting your budget, percentile, or exam type.</p>
+            <p className="text-gray-500 mt-2">We couldn't find any colleges matching your criteria. Try adjusting your budget, percentile, or branch.</p>
           </div>
         )}
         
