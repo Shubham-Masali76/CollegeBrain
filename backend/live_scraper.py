@@ -67,7 +67,7 @@ def cutoff_scraper_thread(task):
     print(f"[Thread-Cutoffs] CRAWLING web for {college_name} cutoffs...")
     
     # 1. Search Web ONLY for DSE / Diploma
-    q1 = f"{college_name} Direct Second Year Engineering DSE Diploma cutoff percentiles category wise GOPEN OBC SC ST 2023 2024"
+    q1 = f"{college_name} Direct Second Year Engineering DSE Diploma cutoff percentiles category wise all branches GOPEN OBC SC ST 2023 2024"
     
     # Rate limit protection for DDGS
     time.sleep(random.uniform(1.0, 3.0))
@@ -79,7 +79,7 @@ def cutoff_scraper_thread(task):
     
     prompt = f"""
     You are an expert admission counselor extracting cutoff metrics from search results for {college_name}.
-    Based on the following search snippets, extract the DIRECT SECOND YEAR (DSE) / Diploma cutoff percentiles.
+    Based on the following search snippets, extract the DIRECT SECOND YEAR (DSE) / Diploma cutoff percentiles for EVERY branch mentioned.
     CRITICAL: DO NOT guess or estimate cutoffs. If the DSE cutoffs are not explicitly in the context, return an empty array.
     
     Search Context:
@@ -87,53 +87,83 @@ def cutoff_scraper_thread(task):
     
     Return ONLY valid JSON matching this schema exactly (no markdown formatting, no comments):
     {{
-      "cutoffs": [
+      "branches": [
         {{
-          "exam_type": "Diploma", // MUST BE "Diploma" or "DSE"
-          "category": "GOPEN", // Extract EVERY SINGLE category found in the text (including unlisted ones like DEF, PWD, ORPHAN, etc.)
-          "percentile": 92.4, // DSE cutoffs are usually high (85-99)
-          "sml": 120 // or null if not found
+          "branch_name": "Computer Engineering", // Extract the actual branch name found
+          "cutoffs": [
+            {{
+              "exam_type": "Diploma", // MUST BE "Diploma" or "DSE"
+              "category": "GOPEN", // Extract EVERY SINGLE category found (GOPEN, OBC, SC, ST, DEF, PWD, etc.)
+              "percentile": 92.4, // DSE cutoffs are usually high (85-99)
+              "sml": 120 // or null if not found
+            }}
+          ]
         }}
       ]
     }}
-    If no DSE cutoffs are found, return an empty array for cutoffs.
+    If no DSE cutoffs are found, return an empty array for branches.
     """
     
     data = call_llm_with_retry(prompt, f"Cutoffs - {institute_code}")
 
-    if not data or 'cutoffs' not in data:
+    if not data or 'branches' not in data:
         return False
 
-    extracted_cutoffs = data['cutoffs']
+    extracted_branches = data['branches']
+    total_cutoffs = 0
 
     # Thread-safe database writes
     with db_lock:
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        # Get program ID
-        cursor.execute("SELECT id FROM programs WHERE college_id = (SELECT id FROM colleges WHERE institute_code = ?) LIMIT 1", (institute_code,))
-        res = cursor.fetchone()
-        if res:
-            program_id = res['id']
-            for c in extracted_cutoffs:
-                exam = c.get('exam_type', 'MHT-CET')
-                cat = c.get('category', 'GOPEN')
-                perc = c.get('percentile', 0.0)
-                sml = c.get('sml', None)
-                
-                # Insert parsed cutoff
-                cursor.execute(
-                    "INSERT INTO cutoffs (program_id, year, exam_type, category, round_number, cutoff_percentile, state_merit_list) VALUES (?, ?, ?, ?, ?, ?, ?)",
-                    (program_id, 2023, exam, cat, 1, perc, sml)
-                )
+        # Get college ID
+        cursor.execute("SELECT id FROM colleges WHERE institute_code = ?", (institute_code,))
+        college_res = cursor.fetchone()
+        if college_res:
+            college_id = college_res['id']
             
-            # Update allows_spot_round flag (assume true if we got data)
-            cursor.execute("UPDATE colleges SET allows_spot_round = ? WHERE institute_code = ?", (1, institute_code))
+            for branch_data in extracted_branches:
+                branch_name = branch_data.get('branch_name', 'Unknown Branch')
+                cutoffs_list = branch_data.get('cutoffs', [])
+                if not cutoffs_list:
+                    continue
+                    
+                # 1. Check if branch exists for this college
+                cursor.execute("SELECT id FROM programs WHERE college_id = ? AND branch_name = ?", (college_id, branch_name))
+                prog_res = cursor.fetchone()
+                if prog_res:
+                    program_id = prog_res['id']
+                else:
+                    # Dynamically create the branch
+                    import random
+                    choice_code = f"{institute_code}-{branch_name[:3].upper()}-{random.randint(100,999)}"
+                    cursor.execute(
+                        "INSERT INTO programs (college_id, choice_code, branch_name) VALUES (?, ?, ?)",
+                        (college_id, choice_code, branch_name)
+                    )
+                    program_id = cursor.lastrowid
+                
+                # 2. Insert Cutoffs
+                for c in cutoffs_list:
+                    exam = c.get('exam_type', 'Diploma')
+                    cat = c.get('category', 'GOPEN')
+                    perc = c.get('percentile', 0.0)
+                    sml = c.get('sml', None)
+                    
+                    cursor.execute(
+                        "INSERT INTO cutoffs (program_id, year, exam_type, category, round_number, cutoff_percentile, state_merit_list) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                        (program_id, 2023, exam, cat, 1, perc, sml)
+                    )
+                    total_cutoffs += 1
+            
+            if total_cutoffs > 0:
+                cursor.execute("UPDATE colleges SET allows_spot_round = ? WHERE institute_code = ?", (1, institute_code))
+        
         conn.commit()
         conn.close()
 
-    print(f"[Thread-Cutoffs] SUCCESS: {institute_code} extracted {len(extracted_cutoffs)} distinct cutoffs!")
+    print(f"[Thread-Cutoffs] SUCCESS: {institute_code} extracted {total_cutoffs} cutoffs across {len(extracted_branches)} branches!")
     return True
 
 def call_llm_with_retry(prompt, task_name="LLM"):
