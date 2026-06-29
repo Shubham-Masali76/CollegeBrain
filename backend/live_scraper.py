@@ -276,11 +276,11 @@ def agentic_web_scraper_thread(task):
 # PIPELINE 0: THE DISCOVERY ENGINE (SEEDS DB AUTOMATICALLY)
 # ---------------------------------------------------------
 def discover_region(region):
-    print(f"\n[Pipeline 0] AI Scout searching for B.E. and M.E. Engineering Colleges across {region}...")
-    context = search_web(f"List of top BE BTech and ME MTech engineering colleges across {region} with official Institute Codes")
+    print(f"\n[Pipeline 0] AI Scout searching for B.E. and B.Tech Engineering Colleges across {region}...")
+    context = search_web(f"List of top BE BTech engineering colleges across {region} with official Institute Codes")
     
     prompt = f"""
-    Generate a comprehensive list of up to 30 top engineering colleges offering B.E./B.Tech and M.E./M.Tech degrees across {region}.
+    Generate a comprehensive list of up to 30 top engineering colleges offering B.E./B.Tech degrees across {region}. Do NOT include colleges that only offer Master's (M.E./M.Tech) programs.
     You MUST include their official admission code or AICTE Institute ID (e.g., JoSAA code, COMEDK code, or State Code).
     
     Context: {context}
