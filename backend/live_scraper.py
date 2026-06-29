@@ -352,6 +352,16 @@ def discover_all_colleges():
                 INSERT INTO colleges (institute_code, name, city, state, country, university)
                 VALUES (?, ?, ?, ?, ?, ?)
             ''', (c['institute_code'], c['name'], c['city'], state_val, 'India', 'State / Autonomous University'))
+            
+            # GET THE ID OF THE INSERTED COLLEGE
+            college_id = cursor.lastrowid
+            
+            # INSERT A DEFAULT PROGRAM SO CUTOFFS CAN ATTACH
+            cursor.execute('''
+                INSERT INTO programs (college_id, choice_code, branch_name)
+                VALUES (?, ?, ?)
+            ''', (college_id, f"{c['institute_code']}CS", "Computer Engineering"))
+            
             inserted += 1
             
     conn.commit()
